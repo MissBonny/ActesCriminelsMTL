@@ -1,2 +1,12 @@
 # ActesCriminelsMTL
 Un projet de science des données prédisant des actes criminels dans la ville de Montréal.
+
+## Introduction
+### Contexte du projet
+Le projet << Prédiction de la criminalité à Montréal à l'aide des séries temporelles [2015-2022] >> vise à utiliser les données historiques de la criminalité pour développer des modèles prédictifs robustes, en utilisant la science des données et des techniques de séries chronologiques. Les données, provenant du site Web Données ouvertes de la Ville de Montréal, offrent une fenêtre sur les différents actes criminels enregistrés dans la ville, tout en respectant la vie privée des personnes touchées par l'obscurcissement des données.
+Ce projet a été mis en œuvre à l'aide de R, RStudio, MySQL, Tableau, RMarkdown et GitHub, afin de naviguer à travers les différentes étapes du cycle de vie des données, de la collecte et du nettoyage des données à la modélisation, la visualisation et la présentation des résultats. L'objectif ultime est de créer deux modèles de prévision robustes pour anticiper la criminalité à Montréal et fournir des recommandations visuelles aux autorités et aux citoyens.
+La période à l'étude, de janvier 2015 à décembre 2022, a été choisie pour donner un aperçu détaillé des tendances de la criminalité au cours des dernières années, tout en tenant compte des changements socioéconomiques et des événements mondiaux, comme la pandémie de COVID-19, qui peuvent avoir influencé les taux de criminalité. Les modèles de prévision, y compris le LSTM et l'amplification du gradient, ont été choisis sur la base de recherches préliminaires et d'études de cas similaires dans le domaine de la prévision de la criminalité, afin d'assurer une approche méthodologique robuste et fiable.
+Le projet est également guidé par une planification détaillée et une gestion des risques, avec la reconnaissance des défis potentiels tels que les données incomplètes ou biaisées, la pertinence des modèles de prévision et les changements imprévus dans les tendances de la criminalité. En outre, notez que toutes les étapes du projet sont réalisées avec une attention particulière à l'éthique et à la vie privée, en veillant à ce que les données utilisées soient traitées de manière responsable.
+
+### Objectifs du Projet
+Concevoir et valider deux modèles prédictifs de science des données, à l'aide de techniques de séries chronologiques, pour anticiper les tendances de la criminalité à Montréal et traduire ces prédictions en visualisations et recommandations pour les autorités et les citoyens.
