@@ -1,0 +1,348 @@
+## Gestion des donnees
+```r
+# Installation des packages necessaire
+install.packages("readr")
+install.packages("dplyr")
+install.packages("sf")
+library(readr)
+library(dplyr)
+library(sf)
+
+# Specifiez les types de colonnes pour le fichier 'limitespdq.csv' en fonction du dictionnaire de donnes fourni
+types_colonnes_pdq <- cols(
+  PDQ = col_double(), # Colonne de numerique comme decrit dans le dictionnaire de donnees
+  NOM_PDQ = col_character(), # Colonne de texte pour le nom du poste de quartier
+  wkt = col_character() # Colonne de texte pour la geometrie au format "well-known text"
+)
+
+# Lire le fichier 'limitespdq.csv'
+MTL <- "limitespdq.csv"
+PosteDeQuartier <- read_csv(MTL, col_types = types_colonnes_pdq, locale = locale(encoding = "UTF-8"))
+
+# Specifiez les types de colonnes pour le fichier 'actes-criminels.csv' en fonction du dictionnaire de donnees precedemment fourni
+types_colonnes_ac <- cols(
+  CATEGORIE = col_character(), 
+  DATE = col_date(format = "%Y-%m-%d"), # Date au format AAAA-MM-JJ
+  QUART = col_character(), # Moment de la journeee du signalement
+  PDQ = col_double(), # Numero du poste de quartier
+  X = col_double(), # Coordonnee spatiale selon la projection MTM8
+  Y = col_double(), # Coordonnee spatiale selon la projection MTM8
+  LATITUDE = col_double(), # Latitude apres obfuscation
+  LONGITUDE = col_double() # Longitude apres obfuscation
+)
+
+# Lire le fichier 'actes-criminels.csv'
+AC <- "actes-criminels.csv"
+ActesCriminels <- read_csv(AC, col_types = types_colonnes_ac, locale = locale(encoding = "UTF-8"))
+
+#Sommaire des donnees 
+summary(PosteDeQuartier)
+summary(ActesCriminels)
+```
+D'apres les resultats :
+
+Dans PosteDeQuartier :
+
+* La colonne PDQ contient des valeurs allant de 1 a 49.
+* NOM_PDQ et wkt sont des colonnes de caracteres avec 29 entrees chacune.
+
+Dans ActesCriminels :
+
+* Il y a 268,264 entrees pour les colonnes CATEGORIE, DATE, et QUART.
+* La colonne DATE a des dates allant du 2015-01-01 au 2023-10-11.
+* La colonne PDQ a 5 valeurs manquantes (NA) et des valeurs allant de 1 a  55.
+* Les colonnes X, Y, LATITUDE, et LONGITUDE ont chacune 45,278 valeurs manquantes.
+* Les coordonnees spatiales X et Y varient respectivement entre environ 268110-306390 et 5029291-5062496.
+* Les coordonnees LATITUDE et LONGITUDE varient respectivement entre environ 45.40-45.70 et -73.97--73.48.
+
+Veuillez noter quelques points 
+
+* Il y a des valeurs manquantes (NA) dans l'ensemble de donnres ActesCriminels, en particulier dans les colonnes PDQ, X, Y, LATITUDE, et LONGITUDE.
+* La colonne PDQ dans ActesCriminels monte jusqu'a  55, mais dans PosteDeQuartier elle monte seulement jusqu'a  49. Cela pourrait indiquer certaines incoherences entre les ensembles de donnees.
+* Le poste de quartier 50 correspond a  l'unite en charge du metro. Il est donc normal qu'il ne possede pas de territoire defini.
+
+## Analyse simple des donnees
+```r
+install.packages("tidyverse")
+library(tidyverse)
+
+# Frequence par PDQ
+count(ActesCriminels$CATEGORIE, ActesCriminels$PDQ, sort = TRUE)
+
+# Frequence par categorie par PDQ
+ActesCriminels %>%
+  group_by(CATEGORIE, PDQ) %>%
+  summarise(n = n()) %>%
+  ungroup() %>%
+  arrange(desc(n)) 
+
+```
+Il n'est pas surprenant que Plateau-Mont-Royale (PDQ 38) apparaisse trois fois dans les dix premia¨res annonces. Les autres sont Centre-Ville (20), Ahuntsic (21), St-Laurent (7), Hochelaga-Maisonnneuve (23), Mercier (48), Centre-ville (Ville-Marie Est) (21), et Montreal-Nord (39).
+
+```r 
+# Frequence moyenne de la categorie de criminalite PDQ
+ActesCriminels %>%
+  group_by(PDQ, CATEGORIE) %>%
+  summarise(total = n()) %>% 
+  group_by(CATEGORIE) %>% 
+  summarise(average = round(mean(total, na.rm=TRUE), 0))
+
+# Frequence et pourcent de criminalite liee aux vehicules par PDQ
+ActesCriminels %>% 
+  filter(CATEGORIE == "Vol dans / sur vehicule a  moteur") %>% 
+  group_by(PDQ) %>%
+  summarise(n = n()) %>%
+  ungroup() %>%
+  arrange(desc(n)) %>%
+  mutate(percent = round(n/sum(n)*100, 1))
+```
+20 % de tous les crimes dans / sur un vehicule a  moteur a  Montreal se produisent dans le Centre-Ville (20, 21).
+
+## Nettoyage des donnees
+```r
+# Verifier s'il y a des valeurs manquantes dans les colonnes essentielles
+missing_PDQ <- is.na(PosteDeQuartier$PDQ)
+missing_NOM_PDQ <- is.na(PosteDeQuartier$NOM_PDQ)
+
+# Gerer les valeurs manquantes
+# Pour PDQ: supprimer les lignes avec des valeurs manquantes
+ActesCriminels <- ActesCriminels[!is.na(ActesCriminels$PDQ), ]
+
+# Pour les coordonnees: supprimer les lignes oa¹ elles sont manquantes
+ActesCriminels <- ActesCriminels[!is.na(ActesCriminels$X) & !is.na(ActesCriminels$Y), ]
+
+# Convertir la colonne DATE en format date
+ActesCriminels$DATE <- as.Date(ActesCriminels$DATE, format="%Y-%m-%d")
+
+# Identifier les doublons potentiels en se basant sur plusieurs colonnes
+duplicates <- duplicated(ActesCriminels[, c("DATE", "PDQ", "CATEGORIE", "QUART", "X", "Y")])
+
+# Examiner ces doublons
+potential_duplicates <- ActesCriminels[duplicates, ]
+
+# Assurer que les variables categorielles sont stockees comme des facteurs
+ActesCriminels$CATEGORIE <- as.factor(ActesCriminels$CATEGORIE)
+ActesCriminels$QUART <- as.factor(ActesCriminels$QUART)
+
+# Verifier si le champ 'wkt' contient des valeurs manquantes ou des chaa®nes vides
+missing_wkt <- sum(is.na(PosteDeQuartier$wkt) | PosteDeQuartier$wkt == "")
+print(missing_wkt)
+
+```
+## Visualisation initiale
+```r
+# Cree un groupe des donnees
+library(dplyr)
+
+crime_data_grouped <- ActesCriminels %>%
+  group_by(CATEGORIE, LONGITUDE, LATITUDE) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+# Visualisation des crimes sur une carte basique
+ggplot(data = ActesCriminels, aes(x = LONGITUDE, y = LATITUDE)) +
+  geom_point(aes(color = CATEGORIE), alpha = 0.6) +
+  scale_color_brewer(palette = "Set1") +
+  coord_fixed(ratio = 1.3) +  # Pour conserver l'aspect de la carte
+  labs(
+    title = "Crimes a  Montreal par Categorie",
+    x = "Longitude",
+    y = "Latitude",
+    color = "Categorie"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    legend.box.spacing = unit(0.4, "cm"),  # Reduire l'espacement autour de la legende
+    legend.key.size = unit(0.5, "cm"),     # Reduire la taille des cles de legende
+    plot.title = element_text(size = 14, hjust = 0.5),  # Centre et reduis la taille du titre
+    axis.title.x = element_text(size = 12, hjust = 0.5),
+    axis.title.y = element_text(size = 12, vjust = 0.5)
+  )
+```
+Nous pouvons voir sur cette carte, il y a des lacunes dans les donnees. Les zones oa¹ les coordonnees de longitude et de latitude (ou X, Y) manquantes montrent des espaces vides. De plus, il y a certaines zones sans donnees parce qu'il n'y a personne qui y vit ou qui peut y acceder, comme sur lle-Bizard (qui fait partie de PDQ-3). 
+
+J'aimerais voir s'il y a des raisons geographiques pour lesquelles il n'y a pas de donnees dans certaines sections de la carte.
+
+```r
+install.packages("leaflet")
+library(leaflet)
+
+# Creer une carte de Montreal
+montreal_map <- leaflet() %>% 
+  setView(lng = -73.6, lat = 45.5, zoom = 12) %>%  # centre la carte sur Montreal
+  addTiles()  # ajoute une carte de fond
+
+# Ajouter les points de donnees de criminalite a  la carte
+montreal_map %>% 
+  addCircleMarkers(
+    data = ActesCriminels, 
+    lng = ~LONGITUDE, 
+    lat = ~LATITUDE,
+    color = ~factor(CATEGORIE),
+    radius = 1,
+    stroke = FALSE,
+    fillOpacity = 0.6,
+    popup = ~CATEGORIE
+  )
+```
+Maintenant, nous pouvons clairement voir oa¹ il y a des taches sans points de donnees ; L'aeroport, certains parcs et les cours d'eau ne sont que quelques-unes des representations geographiques qui montrent peu ou pas de criminalite dans ces regions. 
+
+Apra¨s un enquaªte, il a ete decouvert qu'il n'y a pas 55 PDQ, probablement en raison de la combinaison de zones au fil des ans. De plus, PDQ 55 est designe comme l'aeroport international, ce qui n'etait pas repertorie dans le dictionnaire de donnees ouvertes de la Ville de Montreal. 
+
+Comme une.csv des PDQs n'etait pas sur le site web de donnees ouvertes, ni sur le SPVM, un .csv a ete cree pour relier les noms des PDQ aux numeros d'identification. Il s'appelle NomDePDQ.csv. 
+
+## Transformation des donnees
+```r
+
+# Installer et charger les packages nécessaires
+library(xgboost)
+library(xts)
+library(lubridate)
+
+# 1. Conversion des données en série temporelle
+serie_chronologique <- ActesCriminels %>%
+  group_by(DATE) %>%
+  summarise(n = n())
+
+# Conversion de la série en xts
+serie_chronologique_xts <- xts(serie_chronologique$n, order.by = serie_chronologique$DATE)
+
+# 2. Préparation des données pour XGBoost
+data <- data.frame(
+  Y = coredata(serie_chronologique_xts),
+  day = weekdays(index(serie_chronologique_xts)),
+  month = month(index(serie_chronologique_xts)),
+  year = year(index(serie_chronologique_xts))
+)
+
+# Transformation des variables catégorielles en dummy variables
+data <- model.matrix(~ . + 0, data = data)
+
+# Ajout des dates en tant que colonne supplémentaire (pour une utilisation ultérieure)
+dates <- index(serie_chronologique_xts)
+```
+## Modele XBoost
+```r
+
+# Séparation des données en entraînement et test
+split <- floor(0.8 * nrow(data))
+train_data <- data[1:split,]
+train_y <- serie_chronologique_xts[1:split]
+train_dates <- dates[1:split]
+
+test_data <- data[(split + 1):nrow(data),]
+test_y <- serie_chronologique_xts[(split + 1):length(dates)]
+test_dates <- dates[(split + 1):length(dates)]
+
+# Création des matrices pour XGBoost
+dtrain <- xgb.DMatrix(data = train_data, label = train_y)
+dtest <- xgb.DMatrix(data = test_data, label = test_y)
+
+# 3. Entraînement d'un modèle XGBoost
+params <- list(
+  objective = "reg:squarederror",
+  booster = "gbtree",
+  eta = 0.3,
+  depth = 6
+)
+
+# Entraînement
+modele <- xgb.train(params = params, data = dtrain, nrounds = 100)
+
+# 4. Prédiction avec le modèle XGBoost
+pred <- predict(modele, newdata = dtest)
+
+# Comparaison des prédictions avec les vraies valeurs
+resultats <- data.frame(
+  Date = test_dates,
+  Observations = as.numeric(test_y),
+  Predictions = pred
+)
+
+print(resultats)
+
+```
+## 
+```r
+# Utilisation directe des données XGBoost
+
+# Calculer l'erreur quadratique moyenne (RMSE)
+rmse_value <- sqrt(mean((resultats$Observations - resultats$Predictions)^2))
+
+cat("L'erreur quadratique moyenne (RMSE) est:", rmse_value, "\n")
+
+# Visualiser les observations et les prédictions
+library(ggplot2)
+
+ggplot(resultats, aes(x = Date)) +
+    geom_line(aes(y = Observations, color = "Observations"), size = 1) + 
+    geom_line(aes(y = Predictions, color = "Predictions"), linetype = "dashed", size = 1) + 
+    labs(title = "Observations vs Prédictions",
+         x = "Date", 
+         y = "Valeur", 
+         color = "Légende") +
+    theme_minimal()
+
+```
+## 
+```r
+# Installer et charger les packages nécessaires
+library(xgboost)
+library(xts)
+library(lubridate)
+library(ggplot2)
+
+# 1. Validation croisée pour les séries temporelles
+# On divise la série en plusieurs périodes pour entrainer et tester le modèle
+cv_splits <- function(data, k) {
+  n <- nrow(data)
+  size <- floor(n / k)
+  splits <- vector("list", k)
+  for(i in 1:k) {
+    start_idx <- (i - 1) * size + 1
+    end_idx <- min(i * size, n)
+    splits[[i]] <- list(train = data[1:(start_idx - 1),], test = data[start_idx:end_idx,])
+  }
+  return(splits)
+}
+
+splits <- cv_splits(data, 5) # Diviser les données en 5 parties pour la validation croisée
+
+rmse_values <- numeric(length(splits))
+
+# Pour chaque division, entrainez et testez le modèle
+for(i in 1:length(splits)) {
+  dtrain <- xgb.DMatrix(data = splits[[i]]$train, label = train_y[1:nrow(splits[[i]]$train)])
+  dtest <- xgb.DMatrix(data = splits[[i]]$test, label = train_y[(nrow(splits[[i]]$train) + 1):(nrow(splits[[i]]$train) + nrow(splits[[i]]$test))])
+  
+  modele <- xgb.train(params = params, data = dtrain, nrounds = 100)
+  
+  pred <- predict(modele, newdata = splits[[i]]$test)
+  
+  rmse_values[i] <- sqrt(mean((pred - as.numeric(test_y[1:nrow(splits[[i]]$test)]))^2))
+}
+
+# Afficher les valeurs RMSE pour chaque division
+print(rmse_values)
+
+# 2. Analyse des résidus
+residus <- as.numeric(test_y) - pred
+
+# Tracer les résidus
+ggplot() + 
+  geom_line(aes(x = test_dates, y = residus), color = "blue") +
+  ggtitle("Analyse des résidus") +
+  ylab("Résidus") +
+  xlab("Date")
+
+# 3. Vérification du surapprentissage
+# Une indication possible de surapprentissage est une RMSE très faible
+# sur les données d'entraînement par rapport aux données de test.
+pred_train <- predict(modele, newdata = train_data)
+rmse_train <- sqrt(mean((pred_train - as.numeric(train_y))^2))
+
+cat("RMSE pour les données d'entraînement:", rmse_train, "\n")
+cat("RMSE pour les données de test:", sqrt(mean((pred - as.numeric(test_y))^2)), "\n")
+
+```
