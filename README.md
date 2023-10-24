@@ -28,17 +28,42 @@ Les données proviennent de deux sources principales:
 * Les limites des postes de quartier: Ce jeu de données contient des informations sur les différents postes de quartier, y compris leur nom, identifiant et géolocalisation.
 * Les actes criminels enregistrés: Cette base de données détaille les différents actes criminels enregistrés à Montréal, comprenant la catégorie du crime, le quart de l'année, les coordonnées géographiques, et la date.
 
-#### Nettoyage et Prétraitement des Données 
+#### Nettoyage et Prétraitement des Données (avec R et XBoost)
 
 * Étape 1: Chargement des données: Les données ont été chargées à l'aide de la bibliothèque readr. Les fichiers CSV ont été spécifiquement lus avec un encodage UTF-8 pour assurer la bonne prise en charge des caractères spéciaux.
 * Étape 2: Inspection initiale: Après le chargement des données, une inspection a été effectuée pour comprendre leur structure. Cette étape a révélé la présence de colonnes clés telles que DATE, QUART, et PDQ.
 * Étape 3 : Gestion des valeurs manquantes: On a identifié la présence de valeurs manquantes, notamment dans les colonnes de latitude et de longitude. Plutôt que de supprimer ces données, on a choisi de les conserver, car presque chaque secteur (PDQ) avait au moins une entrée (exceptée 5).
 
-#### Manipulation des données : 
+#### Manipulation des données (avec R et XBoost)
 
-* Étape 4: Validation croisée pour les séries temporelles: Nous avons utilisé une technique de validation croisée spécifique aux séries temporelles pour entraîner et tester le modèle en divisant la série en plusieurs périodes.
-* Étape 5: Entraînement du modèle XGBoost: Un modèle de prévision basé sur XGBoost a été entraîné avec les données, et des prédictions ont été effectuées.
-* Étape 6: Analyse des résidus: Nous avons visualisé et analysé les résidus pour évaluer la performance du modèle.
+* Étape 4 Validation croisée pour les séries temporelles: Nous avons utilisé une technique de validation croisée spécifique aux séries temporelles pour entraîner et tester le modèle en divisant la série en plusieurs périodes.
+* Étape 5 Entraînement du modèle XGBoost: Un modèle de prévision basé sur XGBoost a été entraîné avec les données, et des prédictions ont été effectuées.
+* Étape 6 Analyse des résidus: Nous avons visualisé et analysé les résidus pour évaluer la performance du modèle.
+
+#### Nettoyage et Prétraitement des Données (avec Python, pour un LSTM)
+
+*Étape 1  Chargement des données: Les données ont été chargées à l'aide de la bibliothèque pandas en Python. La prise en charge des formats et des encodages a été gérée automatiquement par la fonction read_csv.
+* Étape 2 Inspection initiale : Une fois les données chargées, une première inspection a été réalisée pour comprendre la structure et le format des données.
+* Étape 3 Gestion des valeurs manquantes: Après inspection des données, il a été constaté qu’il y avait cinq PDQs manquants. Ces entrées ont été supprimées du jeu de données. De plus, pour une analyse de série temporelle cohérente, nous avons décidé de combler les lacunes pour les dates et heures où aucun crime n'a été enregistré. Cette étape assurait une séquence continue de données pour le modèle LSTM.
+
+#### Manipulation des données (avec Python, pour un LSTM)
+
+* Étape 4 Préparation des données : Les données ont été transformées pour s'adapter à un modèle LSTM de série chronologique. Cela impliquait de normaliser les données et de diviser les données en compartiments d'entraînement et de test.
+* Étape 5: Construction et Entraînement du modèle LSTM : Un modèle LSTM a été construit avec Keras, une API de réseaux de neurones en Python. Après avoir défini l'architecture du réseau, le modèle a été entraîné sur les données d'entraînement.
+* Étape 6: Évaluation des prévisions : Les prédictions du modèle LSTM ont été comparées aux valeurs réelles de l'ensemble de test pour évaluer sa performance. Des métriques d'évaluation, telles que l'erreur moyenne au carré, l’erreur quadratique moyenne, et le R2, ont été utilisées pour quantifier la précision du modèle.
+* Étape 7: Analyse des résidus : Tout comme avec le modèle XGBoost, les résidus entre les valeurs prédites et les valeurs réelles ont été visualisés et analysés pour évaluer la qualité des prévisions du modèle LSTM.
+
+### Validation des Modèles
+
+#### Critères d'évaluation pour les deux modèles (XBoost et LSTM)
+La performance des modèles de prédiction de séries chronologiques a été évaluée à l'aide de l'erreur quadratique moyenne (RSME), de l'erreur quadratique moyenne (EMS) et du coefficient de détermination (R^2).
+
+#### Méthode de Validation Croisée (XBoost)
+La validation croisée est une technique utilisée pour évaluer les modèles en les divisant en un ensemble d'apprentissage et un ensemble de tests. Pour ce projet, une méthode de validation croisée « Time Series Split » a été utilisée. Contrairement à une validation croisée k-fold traditionnelle, cette méthode est spécialement conçue pour les séries chronologiques où les données sont divisées en plusieurs ensembles d'apprentissage / test en fonction de l'ordre de temps. Cela garantit que l'information du futur n'est pas utilisée pour prédire le passé, maintenant ainsi l'intégrité temporelle des prédictions.
+
+#### Methode de Validation Train-Test (LSTM)
+Les données ont été divisées chronologiquement en un ensemble d'entraînement et un ensemble de tests. Cette division garantit que le modèle est formé sur des données antérieures et testé sur des données futures, en respectant l'ordre temporel des événements.
+
 
 ### Références
 #### Articles Scientifiques
