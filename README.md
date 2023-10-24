@@ -28,6 +28,18 @@ Les données proviennent de deux sources principales:
 * Les limites des postes de quartier: Ce jeu de données contient des informations sur les différents postes de quartier, y compris leur nom, identifiant et géolocalisation.
 * Les actes criminels enregistrés: Cette base de données détaille les différents actes criminels enregistrés à Montréal, comprenant la catégorie du crime, le quart de l'année, les coordonnées géographiques, et la date.
 
+#### Nettoyage et Prétraitement des Données 
+
+* Étape 1: Chargement des données: Les données ont été chargées à l'aide de la bibliothèque readr. Les fichiers CSV ont été spécifiquement lus avec un encodage UTF-8 pour assurer la bonne prise en charge des caractères spéciaux.
+* Étape 2: Inspection initiale: Après le chargement des données, une inspection a été effectuée pour comprendre leur structure. Cette étape a révélé la présence de colonnes clés telles que DATE, QUART, et PDQ.
+* Étape 3 : Gestion des valeurs manquantes: On a identifié la présence de valeurs manquantes, notamment dans les colonnes de latitude et de longitude. Plutôt que de supprimer ces données, on a choisi de les conserver, car presque chaque secteur (PDQ) avait au moins une entrée (exceptée 5).
+
+#### Manipulation des données : 
+
+* Étape 4: Validation croisée pour les séries temporelles: Nous avons utilisé une technique de validation croisée spécifique aux séries temporelles pour entraîner et tester le modèle en divisant la série en plusieurs périodes.
+* Étape 5: Entraînement du modèle XGBoost: Un modèle de prévision basé sur XGBoost a été entraîné avec les données, et des prédictions ont été effectuées.
+* Étape 6: Analyse des résidus: Nous avons visualisé et analysé les résidus pour évaluer la performance du modèle.
+
 ### Références
 #### Articles Scientifiques
 
