@@ -250,3 +250,29 @@ from sklearn.metrics import r2_score
 
 r2 = r2_score(test_y_denormalise, predictions_denormalisees)
 print(f"R-squared: {r2}")
+
+import matplotlib.pyplot as plt
+import pandas as pd
+
+# Extraire les valeurs observées de 'test_y'
+observed = test_y  
+# Extraire les valeurs prédites du modèle LSTM
+predicted = model.predict(test_X)
+
+# Conversion des prédictions en forme 1D
+predicted = predicted.flatten()
+
+# Création d'un DataFrame pour faciliter la visualisation
+df = pd.DataFrame({'Observed': observed, 'Predicted': predicted})
+
+# Tracer les prédictions et les observations réelles
+plt.figure(figsize=(15, 6))
+plt.plot(df['Observed'], label='Observations', color='red')
+plt.plot(df['Predicted'], label='Prédictions', color='blue', alpha=0.7)
+plt.title('Observations vs Prédictions')
+plt.ylabel('Valeur')
+plt.xlabel('Date')
+plt.legend(loc='best')
+plt.grid(True)
+plt.show()
+
