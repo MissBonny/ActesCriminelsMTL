@@ -1,0 +1,252 @@
+# Chargez les bibliothèques nécessaires
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error
+
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense, Dropout
+
+# Charger les données
+data = pd.read_csv('actes-criminels.csv')
+
+# Afficher les premières lignes du jeu de données
+print(data.head())
+
+# Statistiques sommaire
+print(data.describe())
+
+# Vérification des valeurs manquantes
+print(data.isnull().sum())
+
+# 1. Supprimer les lignes où PDQ est manquant
+data = data.dropna(subset=['PDQ'])
+
+# 2. Convertir la colonne DATE en datetime
+data['DATE'] = pd.to_datetime(data['DATE'])
+
+# 3. Convertir QUART en numérique
+# jour: 0, soir: 1, nuit: 2
+quart_mapping = {'jour': 0, 'soir': 1, 'nuit': 2}
+data['QUART'] = data['QUART'].map(quart_mapping)
+
+# Afficher un aperçu des données
+print(data.head())
+
+# 1. Obtenir toutes les valeurs uniques et supprimer les NaN
+
+# Toutes les dates uniques
+dates = pd.date_range(start=data['DATE'].min(), end=data['DATE'].max())
+
+# Tous les PDQ uniques et suppression des NaN
+pdqs = data['PDQ'].unique()
+pdqs = pdqs[pd.notna(pdqs)]
+
+# Tous les QUART uniques et suppression des NaN (si nécessaire)
+quarts = data['QUART'].unique()
+quarts = quarts[pd.notna(quarts)]
+
+# 2. Créer une liste de toutes les combinaisons possibles
+all_combinations = [(date, quart, pdq) for date in dates for quart in quarts for pdq in pdqs]
+
+# Convertir cette liste en DataFrame
+df_all = pd.DataFrame(all_combinations, columns=['DATE', 'QUART', 'PDQ'])
+
+# 3. Fusionner avec l'ensemble de données actuel
+merged_data = pd.merge(df_all, data, on=['DATE', 'QUART', 'PDQ'], how='left')
+
+# 4. Remplacer les NaN par des valeurs indicatives
+merged_data['CATEGORIE'].fillna("Aucun crime", inplace=True)
+
+# 1. Vérifier les dimensions
+expected_rows = len(dates) * len(pdqs) * len(quarts)
+print(f"Nombre attendu de lignes: {expected_rows}")
+print(f"Nombre réel de lignes: {len(merged_data)}")
+
+# 2. Vérifier l'absence de NaN dans les colonnes clés
+print(merged_data[['DATE', 'QUART', 'PDQ', 'CATEGORIE']].isnull().sum())
+
+# 3. Vérifiez quelques échantillons de données
+random_sample_original = data.sample(5)
+print("Échantillon aléatoire du DataFrame original:")
+print(random_sample_original)
+
+random_sample_merged = merged_data.loc[merged_data['DATE'].isin(random_sample_original['DATE']) & merged_data['PDQ'].isin(random_sample_original['PDQ']) & merged_data['QUART'].isin(random_sample_original['QUART'])]
+print("\nÉchantillon correspondant du DataFrame fusionné:")
+print(random_sample_merged)
+
+# Rechercher des lignes en double dans le jeu de données d'origine
+print(f"Nombre de lignes en double dans le jeu de données d'origine: {data.duplicated(subset=['DATE', 'QUART', 'PDQ']).sum()}")
+
+print(f"Nombre de lignes en double dans les données fusionnées: {merged_data.duplicated(subset=['DATE', 'QUART', 'PDQ']).sum()}")
+
+# Réinitialisation de l'index du DataFrame
+merged_data = merged_data.reset_index(drop=True)
+
+# Utilisation de l'index comme identificateur unique (crime_id)
+merged_data['crime_id'] = merged_data.index
+
+# Vérifiez la colonne crime_id
+print("Total unique crime_ids:", merged_data['crime_id'].nunique())
+print("Total colonnes en merged_data:", len(merged_data))
+
+# Afficher la tête et la queue
+print(merged_data.head())
+print(merged_data.tail())
+
+# Rechercher des valeurs nulles
+print(merged_data['crime_id'].isnull().sum())
+
+# Statistiques descriptives pour afficher la plage d'IDs
+print(merged_data['crime_id'].describe())
+
+# Échantillonnage de lignes aléatoires
+print(merged_data.sample(5))
+
+# Tri des données par date pour s'assurer de la séquence chronologique
+merged_data.sort_values(by='DATE', inplace=True)
+
+# Encodage de la colonne 'CATEGORIE'
+from sklearn.preprocessing import LabelEncoder
+
+encoder = LabelEncoder()
+merged_data['CATEGORIE_ENCODEE'] = encoder.fit_transform(merged_data['CATEGORIE'])
+
+# Définition des décalages
+def create_dataset(dataset, look_back=1):
+    dataX, dataY = [], []
+    for i in range(len(dataset) - look_back):
+        a = dataset[i:(i + look_back), 0]
+        dataX.append(a)
+        dataY.append(dataset[i + look_back, 0])
+    return np.array(dataX), np.array(dataY)
+
+# Prendre la colonne 'CATEGORIE_ENCODEE' comme notre série
+data = merged_data['CATEGORIE_ENCODEE'].values.reshape(-1, 1)
+
+look_back = 1  # Ici, nous utilisons un décalage d'une période. 
+X, y = create_dataset(data, look_back)
+
+# Aggrégation des données pour obtenir le compte des crimes par date, QUART et PDQ
+df_aggrege = merged_data.groupby(['DATE', 'QUART', 'PDQ']).size().reset_index(name='NOMBRE_CRIMES')
+
+# Comblons les lacunes
+# Création d'un DataFrame avec toutes les combinaisons possibles de DATE, QUART et PDQ
+dates = pd.date_range(df_aggrege['DATE'].min(), df_aggrege['DATE'].max(), name='DATE')
+quarts = merged_data['QUART'].unique()
+pdqs = merged_data['PDQ'].unique()
+
+df_combinaisons = pd.DataFrame([(date, quart, pdq) for date in dates for quart in quarts for pdq in pdqs], columns=['DATE', 'QUART', 'PDQ'])
+
+# Fusion des combinaisons avec le DataFrame agrégé pour s'assurer que chaque combinaison est représentée
+df_final = pd.merge(df_combinaisons, df_aggrege, on=['DATE', 'QUART', 'PDQ'], how='left').fillna(0)
+
+from sklearn.preprocessing import MinMaxScaler
+
+# Normalisation des données pour qu'elles soient comprises entre 0 et 1
+scaler = MinMaxScaler(feature_range=(0, 1))
+df_final['NOMBRE_CRIMES_NORMALISE'] = scaler.fit_transform(df_final[['NOMBRE_CRIMES']])
+
+# Convertir le DataFrame en une séquence pour l'entraînement du LSTM
+def generer_sequences(data, longueur_sequence):
+    X, y = [], []
+    for i in range(len(data) - longueur_sequence):
+        X.append(data[i:i+longueur_sequence])
+        y.append(data[i+longueur_sequence])
+    return np.array(X), np.array(y)
+
+longueur_sequence = 10  
+X, y = generer_sequences(df_final['NOMBRE_CRIMES_NORMALISE'].values, longueur_sequence)
+
+# 1. Vérification des dimensions
+expected_rows = len(dates) * len(quarts) * len(pdqs)
+print(f"Nombre attendu de lignes: {expected_rows}")
+print(f"Nombre réel de lignes dans df_final: {len(df_final)}")
+
+# 2. Vérification des valeurs manquantes
+print("\nValeurs manquantes dans df_final:")
+print(df_final.isnull().sum())
+
+# 3. Affichage de quelques échantillons
+print("\nÉchantillon aléatoire de df_final:")
+print(df_final.sample(5))
+
+# 4. Résumé statistique de NOMBRE_CRIMES
+print("\nStatistiques de NOMBRE_CRIMES:")
+print(df_final['NOMBRE_CRIMES'].describe())
+
+# 5. Vérification des combinaisons
+sample_date = df_final['DATE'].sample(1).iloc[0]
+sample_quart = df_final['QUART'].sample(1).iloc[0]
+sample_pdq = df_final['PDQ'].sample(1).iloc[0]
+
+print(f"\nVérification pour la date {sample_date}, QUART {sample_quart}, et PDQ {sample_pdq}:")
+print(df_final[(df_final['DATE'] == sample_date) & (df_final['QUART'] == sample_quart) & (df_final['PDQ'] == sample_pdq)])
+
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense
+
+# Importer la bibliothèque nécessaire
+from sklearn.model_selection import train_test_split
+
+# Séparation des données en 80% pour l'entraînement et 20% pour le test
+train_df, test_df = train_test_split(df_final, test_size=0.2, shuffle=False)
+
+# Étant donné que nous travaillons avec des séries temporelles, il est important de ne pas mélanger (shuffle) les données
+
+# Séparation des entrées (features) et des sorties (labels)
+train_X = train_df.drop(columns=['NOMBRE_CRIMES', 'DATE', 'QUART', 'PDQ'])
+train_y = train_df['NOMBRE_CRIMES']
+
+test_X = test_df.drop(columns=['NOMBRE_CRIMES', 'DATE', 'QUART', 'PDQ'])
+test_y = test_df['NOMBRE_CRIMES']
+
+# Reformater les entrées pour le LSTM: [échantillons, pas de temps, caractéristiques]
+train_X = train_X.values.reshape((train_X.shape[0], 1, train_X.shape[1]))
+test_X = test_X.values.reshape((test_X.shape[0], 1, test_X.shape[1]))
+
+# Initialiser le modèle
+model = Sequential()
+
+# Ajouter une couche LSTM
+model.add(LSTM(50, input_shape=(train_X.shape[1], train_X.shape[2])))
+
+# Ajouter une couche dense pour la prédiction
+model.add(Dense(1))
+
+# Compiler le modèle
+model.compile(loss='mae', optimizer='adam')
+
+# Entraîner le modèle
+history = model.fit(train_X, train_y, epochs=50, batch_size=72, validation_data=(test_X, test_y), verbose=2, shuffle=False)
+
+# Importer les bibliothèques nécessaires pour la visualisation
+import matplotlib.pyplot as plt
+
+# Tracer l'historique de la perte pendant l'entraînement
+plt.plot(history.history['loss'], label='Perte d\'entraînement (training loss)')
+plt.plot(history.history['val_loss'], label='Perte de validation (validation loss)')
+plt.legend()
+plt.show()
+
+# Faire des prédictions
+yhat = model.predict(test_X)
+
+# Comparer les prédictions aux vraies valeurs
+from sklearn.metrics import mean_squared_error
+
+mse = mean_squared_error(test_y, yhat)
+print(f"Erreur quadratique moyenne (Mean Squared Error): {mse}")
+
+# Prédiction sur l'ensemble de test
+predictions = model.predict(test_X)
+
+predictions_denormalisees = scaler.inverse_transform(predictions)
+test_y_denormalise = scaler.inverse_transform(test_y.values.reshape(-1, 1))
+
+from sklearn.metrics import r2_score
+
+r2 = r2_score(test_y_denormalise, predictions_denormalisees)
+print(f"R-squared: {r2}")
