@@ -27,3 +27,15 @@ Les données proviennent de deux sources principales:
 
 * Les limites des postes de quartier: Ce jeu de données contient des informations sur les différents postes de quartier, y compris leur nom, identifiant et géolocalisation.
 * Les actes criminels enregistrés: Cette base de données détaille les différents actes criminels enregistrés à Montréal, comprenant la catégorie du crime, le quart de l'année, les coordonnées géographiques, et la date.
+
+### Références
+#### Articles Scientifiques
+Corcoran, J., & Zahnow, R. (2022). Weather and crime: a systematic review of the empirical literature. Crime Science, 11(1). https://doi.org/10.1186/s40163-022-00179-8
+Jenga, K., Catal, C., & Kar, G. (2023). Machine learning in crime prediction. Journal of Ambient Intelligence and Humanized Computing, 14(3), 2887–2913. https://doi.org/10.1007/s12652-023-04530-y
+Saeed, R. M., & Abdulmohsin, H. A. (2023). A study on predicting crime rates through machine learning and data mining using text. Journal of Intelligent Systems, 32(1). https://doi.org/10.1515/jisys-2022-0223
+
+#### Données
+Actes criminels - Site web des données ouvertes de la Ville de Montréal. (2023, Septembre 5). https://donnees.montreal.ca/dataset/actes-criminels
+Limite des secteurs de poste de quartier de police - Site web des données ouvertes de la Ville de Montréal. (2022). https://donnees.montreal.ca/dataset/limites-pdq-spvm
+Montreal Crime data. (2021, Aout 24). Kaggle. https://www.kaggle.com/datasets/stevieknox/montreal-crime-data
+Service de Police de la Ville de Montréal - SPVM. (n.d.). https://spvm.qc.ca/
