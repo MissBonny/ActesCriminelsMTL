@@ -61,10 +61,9 @@ Qu'il y a d'autres facteurs qui ont une incidence sur la criminalité à Montré
 J'ai récemment lu une revue scientifique qui a trouvé une association positive et linéaire entre la température et les taux de criminalité violent (Corcoran & Zahnow, 2022). Ce facteur et d'autres peuvent avoir une incidence sur les taux de criminalité à Montréal et, par conséquent, nécessiter une étude plus approfondie. Si j'ai le temps, j'aimerais voir s'il y a une corrélation positive entre la température et les actes criminels à Montréal, mais ce n'est pas l'objectif de ce projet.
 
 ### Tâches
-Les tâches sont énumérées dans un GANTT dans le section 'visualisation'. Chaque tâche prend 6 jours, sauf la dernière (Rapportage), qui prend neuf. 
-Taches : 
+Les tâches sont énumérées dans un GANTT dans le section 'visualisation'. Chaque tâche prend 6 jours, sauf la dernière (Rapportage), qui prend neuf.  
 
-* Importer les données en MySQL
+* Importer les données
 * Nettoyer et regrouper les données
 * Ajouter les points de données temporelles
 * Combiner les lacunes lorsqu’un crime n’a pas été commis
