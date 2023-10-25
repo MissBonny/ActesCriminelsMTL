@@ -225,6 +225,8 @@ dates <- index(serie_chronologique_xts)
 ## Modele XBoost
 ```r
 
+data <- as.data.frame(data)
+
 # Séparation des données en entraînement et test
 split <- floor(0.8 * nrow(data))
 train_data <- data[1:split,]
